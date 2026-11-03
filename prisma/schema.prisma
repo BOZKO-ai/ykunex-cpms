@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int             @id @default(autoincrement())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         String          @default("STAFF") // ADMIN | MANAGER | STAFF | VIEWER
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+
+  // Advanced Profile Details
+  image        String?         @db.LongText // Base64 image data
+  phone        String?
+  bio          String?         @db.Text
+  department   String?
+  birthDate    DateTime?
+
+  projects     Project[]
+  updates      ProjectUpdate[]
+  activities   Activity[]
+  notifications Notification[] @relation("UserNotifications")
+}
+
+// One table powers every admin-editable dropdown (service areas, customer & project statuses).
+model ListItem {
+  id               Int        @id @default(autoincrement())
+  list             String // SERVICE_AREA | CUSTOMER_STATUS | PROJECT_STATUS
+  label            String
+  color            String     @default("#6b7280")
+  isClosed         Boolean    @default(false) // project statuses only: "finished" (Completed, Cancelled)
+  active           Boolean    @default(true)
+  sortOrder        Int        @default(0)
+  customers        Customer[] @relation("CustomerStatus")
+  projectsByStatus Project[]  @relation("ProjectStatus")
+  projectsByArea   Project[]  @relation("ProjectArea")
+
+  @@unique([list, label])
+}
+
+model Customer {
+  id            Int       @id @default(autoincrement())
+  name          String
+  contactPerson String    @default("")
+  email         String    @default("")
+  phone         String    @default("")
+  address       String    @default("")
+  type          String    @default("BUSINESS") // INDIVIDUAL | BUSINESS
+  statusId      Int
+  status        ListItem  @relation("CustomerStatus", fields: [statusId], references: [id])
+  notes         String    @default("")
+  archived      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  projects      Project[]
+
+  @@index([name])
+}
+
+model Project {
+  id            Int             @id @default(autoincrement())
+  name          String
+  description   String          @default("")
+  customerId    Int
+  customer      Customer        @relation(fields: [customerId], references: [id])
+  serviceAreaId Int
+  serviceArea   ListItem        @relation("ProjectArea", fields: [serviceAreaId], references: [id])
+  statusId      Int
+  status        ListItem        @relation("ProjectStatus", fields: [statusId], references: [id])
+  startDate     DateTime
+  deadline      DateTime
+  progress      Int             @default(0)
+  budget        Float?
+  assignedToId  Int?
+  assignedTo    User?           @relation(fields: [assignedToId], references: [id])
+  archived      Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  updates       ProjectUpdate[]
+  tasks         Task[]
+  documents     ProjectDocument[]
+
+  @@index([deadline])
+  @@index([customerId])
+}
+
+model ProjectUpdate {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  note      String
+  progress  Int?
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model Task {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+// Persistent brute-force guard: 5 failures => 5 minute lock per email. Survives restarts.
+model LoginAttempt {
+  email       String   @id
+  count       Int      @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime @updatedAt
+
+  @@index([lockedUntil])
+}
+
+model Activity {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  Int?
+  summary   String
+  details   String? // Store field-level changes as text or JSON
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO | SUCCESS | WARNING | ALERT
+  read      Boolean  @default(false)
+  link      String?  // Optional URL to redirect to
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model ProjectDocument {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  type      String   // mime type
+  size      Int      // size in bytes
+  data      String   @db.LongText // Base64 data
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}

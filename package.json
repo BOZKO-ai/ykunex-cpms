@@ -1,0 +1,41 @@
+{
+  "name": "yakunex-cpms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yakunex Client & Project Management System (Week 02 internship assessment)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "setup": "prisma db push && tsx prisma/seed.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "backup": "node scripts/backup.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "framer-motion": "^14.9.0",
+    "jose": "^5.9.6",
+    "lucide-react": "^1.66.0",
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.10.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.17.10",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
