@@ -17,27 +17,40 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
   if (!("data" in v)) return { ...v.state, values: { email: v.state.values?.email ?? "" } };
 
   const email = v.data.email.toLowerCase();
-  const rec = await db.loginAttempt.findUnique({ where: { email } });
-  if (rec?.lockedUntil && rec.lockedUntil > new Date()) {
-    return { message: "Too many failed attempts. Please wait a few minutes and try again.", values: { email } };
+
+  try {
+    const rec = await db.loginAttempt.findUnique({ where: { email } });
+    if (rec?.lockedUntil && rec.lockedUntil > new Date()) {
+      return { message: "Too many failed attempts. Please wait a few minutes and try again.", values: { email } };
+    }
+
+    const user = await db.user.findUnique({ where: { email } });
+    const ok = !!user && user.active && (await bcrypt.compare(v.data.password, user.passwordHash));
+    if (!ok || !user) {
+      const expired = rec?.lockedUntil ? rec.lockedUntil <= new Date() : false;
+      const count = (expired ? 0 : rec?.count ?? 0) + 1;
+      const lockedUntil = count >= MAX_ATTEMPTS ? new Date(Date.now() + LOCK_MS) : null;
+      await db.loginAttempt.upsert({
+        where: { email },
+        update: { count, lockedUntil },
+        create: { email, count, lockedUntil },
+      });
+      return { message: "Incorrect email or password.", values: { email } };
+    }
+
+    if (rec) await db.loginAttempt.delete({ where: { email } }).catch(() => {});
+    await createSession(
+      { uid: user.id, name: user.name, role: user.role === "ADMIN" ? "ADMIN" : "STAFF" },
+      fd.get("remember") === "on"
+    );
+    await logActivity(user.id, "login", "user", user.id, `${user.name} signed in`);
+  } catch (err: unknown) {
+    console.error("[Login Action] Database failure:", err instanceof Error ? err.message : err);
+    return {
+      message: "Cannot connect to database (MySQL is offline). Please start MySQL in XAMPP Control Panel.",
+      values: { email }
+    };
   }
 
-  const user = await db.user.findUnique({ where: { email } });
-  const ok = !!user && user.active && (await bcrypt.compare(v.data.password, user.passwordHash));
-  if (!ok || !user) {
-    const expired = rec?.lockedUntil ? rec.lockedUntil <= new Date() : false;
-    const count = (expired ? 0 : rec?.count ?? 0) + 1;
-    const lockedUntil = count >= MAX_ATTEMPTS ? new Date(Date.now() + LOCK_MS) : null;
-    await db.loginAttempt.upsert({
-      where: { email },
-      update: { count, lockedUntil },
-      create: { email, count, lockedUntil },
-    });
-    return { message: "Incorrect email or password.", values: { email } };
-  }
-
-  if (rec) await db.loginAttempt.delete({ where: { email } }).catch(() => {});
-  await createSession({ uid: user.id, name: user.name, role: user.role === "ADMIN" ? "ADMIN" : "STAFF" });
-  await logActivity(user.id, "login", "user", user.id, `${user.name} signed in`);
   redirect("/");
 }

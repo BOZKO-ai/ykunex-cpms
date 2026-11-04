@@ -8,6 +8,7 @@ import { TYPE_LABEL } from "@/lib/utils";
 import { Badge, DeadlineInfo, PageHeader, Progress } from "@/components/ui";
 import { ConfirmButton } from "@/components/form";
 import { setCustomerArchived } from "../actions";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { 
   Building2, 
   Mail, 
@@ -48,6 +49,13 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
+      <Breadcrumbs 
+        items={[
+          { label: "Customers", href: "/customers" },
+          { label: c.name }
+        ]} 
+      />
+
       <PageHeader title={c.name} subtitle={c.archived ? "This customer is archived." : undefined}>
         <Link href={`/customers/${c.id}/edit`} className="btn">
           Edit

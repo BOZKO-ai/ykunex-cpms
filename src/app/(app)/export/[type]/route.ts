@@ -32,7 +32,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ type: s
     });
     rows = [
       ["ID", "Project", "Customer", "Service area", "Status", "Start date", "Deadline", "Progress %", "Budget (LKR)", "Assigned to", "Archived", "Description"],
-      ...data.map((p) => [p.id, p.name, p.customer.name, p.serviceArea.label, p.status.label, toInputDate(p.startDate), toInputDate(p.deadline), p.progress, p.budget, p.assignedTo?.name ?? "", p.archived ? "Yes" : "No", p.description]),
+      ...data.map((p) => [p.id, p.name, p.customer.name, p.serviceArea.label, p.status.label, toInputDate(p.startDate), toInputDate(p.deadline), p.progress, p.budget, p.paidAmount, p.budget === null ? "" : Math.max(0, p.budget - p.paidAmount), p.assignedTo?.name ?? "", p.archived ? "Yes" : "No", p.description]),
     ];
   } else {
     return new Response("Unknown export type.", { status: 404 });

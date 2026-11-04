@@ -22,4 +22,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!login|_next/static|_next/image|favicon.ico|icon.svg|logo.svg).*)"] };
+export const config = { matcher: ["/((?!login|_next/static|_next/image|favicon.ico|icon.svg|logo.svg|logo.png).*)"] };

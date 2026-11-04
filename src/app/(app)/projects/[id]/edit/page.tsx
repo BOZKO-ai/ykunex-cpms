@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getList } from "@/lib/lists";
 import { ProjectForm } from "@/components/forms";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { PageHeader } from "@/components/ui";
 import { saveProject } from "../../actions";
 
@@ -30,6 +31,13 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   ]);
   return (
     <>
+      <Breadcrumbs 
+        items={[
+          { label: "Projects", href: "/projects" },
+          { label: p.name, href: `/projects/${p.id}` },
+          { label: "Edit" }
+        ]} 
+      />
       <PageHeader title={`Edit ${p.name}`} subtitle="Fields marked * are required." />
       <ProjectForm
         action={saveProject.bind(null, p.id)}

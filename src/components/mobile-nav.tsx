@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Nav } from "./nav";
@@ -12,7 +14,8 @@ export function MobileNav({
   userImage,
   userName,
   userRole,
-  logoutAction
+  logoutAction,
+  notificationsNode,
 }: { 
   isAdmin: boolean;
   logoUrl: string;
@@ -21,8 +24,21 @@ export function MobileNav({
   userName: string;
   userRole: string;
   logoutAction: (formData: FormData) => void;
+  notificationsNode?: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close automatically whenever route changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  const closeDrawer = useCallback(() => {
+    requestAnimationFrame(() => {
+      setIsOpen(false);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,16 +54,24 @@ export function MobileNav({
   }, [isOpen]);
 
   return (
-    <div className="mobile-nav-container">
-      <button 
-        className="mobile-toggle" 
-        onClick={() => setIsOpen(true)}
-        aria-label="Open menu"
-        aria-expanded={isOpen}
-        aria-controls="mobile-menu"
-      >
-        <Menu size={24} />
-      </button>
+    <>
+      <div className="mobile-nav-container">
+        <button 
+          className="mobile-toggle" 
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={isOpen}
+          aria-controls="mobile-menu"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {notificationsNode && (
+        <div className="mobile-notif-container">
+          {notificationsNode}
+        </div>
+      )}
 
       <AnimatePresence>
         {isOpen && (
@@ -71,12 +95,13 @@ export function MobileNav({
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
             >
               <div className="drawer-header">
-                <a className="brand" href="/" onClick={() => setIsOpen(false)}>
+                <Link className="brand" href="/" onClick={closeDrawer}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo.png" alt={companyName} style={{ background: 'transparent', border: 'none', padding: 0 }} />
+                  <img src={logoUrl || "/logo.svg"} alt={companyName} style={{ background: 'transparent', border: 'none', padding: 0, filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.4))' }} />
                   <span>{companyName}</span>
-                </a>
+                </Link>
                 <button 
+                  type="button"
                   className="close-btn" 
                   onClick={() => setIsOpen(false)}
                   aria-label="Close menu"
@@ -86,23 +111,29 @@ export function MobileNav({
               </div>
 
               <div className="drawer-content">
-                <Nav isAdmin={isAdmin} onItemClick={() => setIsOpen(false)} />
+                <Nav 
+                  isAdmin={isAdmin} 
+                  onItemClick={closeDrawer} 
+                  layoutIdPrefix="mobile"
+                />
               </div>
 
               <div className="drawer-footer">
                 <div className="userbox">
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-                    <div className="profile-mini">
-                      {userImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={userImage} alt={userName} className="profile-img" />
-                      ) : (
-                        <User size={16} />
-                      )}
-                    </div>
-                    <div>
-                      <strong>{userName}</strong>
-                      <span className="muted">{userRole === "ADMIN" ? "Admin" : "Staff"}</span>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <div className="profile-mini">
+                        {userImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={userImage} alt={userName} className="profile-img" />
+                        ) : (
+                          <User size={16} />
+                        )}
+                      </div>
+                      <div>
+                        <strong>{userName}</strong>
+                        <span className="muted">{userRole === "ADMIN" ? "Admin" : "Staff"}</span>
+                      </div>
                     </div>
                   </div>
                   <form action={logoutAction} style={{ width: "100%" }}>
@@ -116,6 +147,6 @@ export function MobileNav({
           </>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

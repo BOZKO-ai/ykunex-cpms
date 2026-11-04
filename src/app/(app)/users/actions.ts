@@ -53,6 +53,14 @@ export async function saveUser(id: number | null, _: FormState, fd: FormData): P
             summary: `Created user "${name}"`,
           },
         });
+        await tx.notification.create({
+          data: {
+            userId: newUser.id,
+            title: "Welcome to Yakunex CPMS",
+            message: `Welcome aboard, ${name}! Your account has been set up with the ${role} role.`,
+            type: "SUCCESS",
+          },
+        });
       }
     });
   } catch (e: any) {

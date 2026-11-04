@@ -72,6 +72,12 @@ export const projectSchema = z
       .default("")
       .transform((v) => (v === "" ? null : Math.round(Number(v) * 100) / 100))
       .pipe(z.number({ invalid_type_error: "Budget must be a number" }).min(0, "Budget cannot be negative").nullable()),
+    paidAmount: z
+      .string()
+      .trim()
+      .default("0")
+      .transform((v) => (v === "" ? 0 : Math.round(Number(v) * 100) / 100))
+      .pipe(z.number({ invalid_type_error: "Paid amount must be a number" }).min(0, "Paid amount cannot be negative")),
   })
   .refine(
     (d) => {
@@ -80,7 +86,11 @@ export const projectSchema = z
       return !s || !e || e >= s;
     },
     { path: ["deadline"], message: "Deadline must be on or after the start date" },
-  );
+  )
+  .refine((d) => d.budget === null || d.paidAmount <= d.budget, {
+    path: ["paidAmount"],
+    message: "Paid amount cannot exceed the project budget",
+  });
 
 export const updateSchema = z.object({
   note: required("Update note", 2000),
@@ -99,7 +109,20 @@ export const updateSchema = z.object({
     ),
 });
 
-export const taskSchema = z.object({ title: required("Task", 150) });
+export const taskSchema = z.object({
+  title: required("Task", 150),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"], { errorMap: () => ({ message: "Choose a valid priority" }) }).default("MEDIUM"),
+  deadline: z
+    .string()
+    .trim()
+    .default("")
+    .refine((v) => v === "" || parseDate(v) !== null, "Deadline is not a valid date"),
+  assigneeId: z
+    .string()
+    .default("")
+    .transform((v) => (v.trim() === "" ? null : Number(v)))
+    .pipe(z.number({ invalid_type_error: "Choose a valid staff member" }).int().positive().nullable()),
+});
 
 export const listItemSchema = z.object({
   label: required("Name", 60),

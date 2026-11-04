@@ -15,23 +15,24 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
 }
 
 /** Status pill. Text is always dark; the colour is only a dot, so any admin-chosen colour stays readable. */
-export function Badge({ label, color }: { label: string; color?: string }) {
+export function Badge({ label, color, active = false }: { label: string; color?: string; active?: boolean }) {
   const bg = color ? `${color}15` : "#6b728015";
   return (
-    <span className="badge" style={{ backgroundColor: bg, borderColor: color ? `${color}30` : undefined }}>
-      <span className="dot" style={{ background: color ?? "#6b7280" }} aria-hidden="true" />
+    <span className={`badge${active ? " badge-active" : ""}`} style={{ backgroundColor: bg, borderColor: color ? `${color}30` : undefined }}>
+      <span className={`dot${active ? " dot-pulse" : ""}`} style={{ background: color ?? "#6b7280" }} aria-hidden="true" />
       {label}
     </span>
   );
 }
 
 export function Progress({ value, color }: { value: number; color?: string }) {
+  const clampedValue = Math.min(100, Math.max(0, value));
   return (
     <div className="progress-wrap">
-      <div className="progress" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100} aria-label="Progress">
-        <span style={{ width: `${value}%`, backgroundColor: color, boxShadow: color ? `0 0 10px ${color}60` : undefined }} />
+      <div className="progress" role="progressbar" aria-valuenow={clampedValue} aria-valuemin={0} aria-valuemax={100} aria-label={`Progress: ${clampedValue}%`}>
+        <span style={{ width: `${clampedValue}%`, backgroundColor: color, boxShadow: color ? `0 0 10px ${color}60` : undefined }} />
       </div>
-      <span className="progress-label">{value}%</span>
+      <span className="progress-label">{clampedValue}%</span>
     </div>
   );
 }

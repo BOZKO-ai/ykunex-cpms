@@ -2,7 +2,7 @@ import { PageHeader, Skeleton } from "@/components/ui";
 
 export default function Loading() {
   return (
-    <>
+    <div aria-busy="true" aria-live="polite">
       <PageHeader title="Dashboard" subtitle="Loading your workspace..." />
       
       <div className="grid-4" style={{ marginBottom: "1.5rem" }}>
@@ -47,6 +47,6 @@ export default function Loading() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

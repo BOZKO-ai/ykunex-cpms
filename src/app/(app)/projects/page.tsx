@@ -195,7 +195,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                   </td>
                   <td>{p.serviceArea.label}</td>
                   <td>
-                    <Badge label={p.status.label} color={p.status.color} />
+                    <Badge label={p.status.label} color={p.status.color} active={!p.status.isClosed} />
                   </td>
                   <td>
                     <DeadlineInfo deadline={p.deadline} closed={p.status.isClosed} soonDays={s.dueSoonDays} />

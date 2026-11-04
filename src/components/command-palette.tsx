@@ -25,14 +25,28 @@ export function CommandPalette({ projects, customers }: { projects: SearchItem[]
     : allItems.filter(item => item.name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    const isTyping = target?.matches("input, textarea, select, [contenteditable='true']");
     if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       setOpen(o => !o);
     }
+    if (!isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        router.push("/customers/new");
+      } else if (e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        router.push("/projects/new");
+      } else if (e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("yakunex:toggle-theme"));
+      }
+    }
     if (e.key === "Escape") {
       setOpen(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -73,7 +87,10 @@ export function CommandPalette({ projects, customers }: { projects: SearchItem[]
             </div>
           ))}
           {query === "" && (
-            <div className="cmd-hint">Start typing to search projects and customers...</div>
+            <div className="cmd-hint">
+              <span>Search projects and customers</span>
+              <small>Shortcuts: C create customer · P create project · T toggle theme</small>
+            </div>
           )}
         </div>
       </div>

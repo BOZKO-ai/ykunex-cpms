@@ -4,11 +4,10 @@ import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { getAllList } from "@/lib/lists";
 import { DAY, fmtDate, fmtDateTime, todayUTC } from "@/lib/dates";
-import { one, type SP } from "@/lib/utils";
-import { Badge, DeadlineInfo, PageHeader, Progress } from "@/components/ui";
+import { money, one, type SP } from "@/lib/utils";
+import { DeadlineInfo, Progress } from "@/components/ui";
 import { RevenueChart, StatusPieChart, TrendChart } from "@/components/charts";
 import { 
-  LayoutDashboard, 
   Users, 
   Briefcase, 
   AlertCircle, 
@@ -16,7 +15,14 @@ import {
   TrendingUp, 
   PieChart as PieChartIcon, 
   Plus,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
+  DollarSign,
+  Activity as ActivityIcon,
+  Settings as SettingsIcon,
+  ChevronRight
 } from "lucide-react";
 
 export const metadata = { title: "Dashboard" };
@@ -26,6 +32,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const s = await getSettings();
   const sp = await searchParams;
   const today = todayUTC();
+  const snapshotAt = new Date();
   const soonEnd = new Date(today.getTime() + s.dueSoonDays * DAY);
 
   const live = { archived: false };
@@ -53,22 +60,43 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     db.project.findMany({
       where: { ...open, deadline: { lt: today } },
       orderBy: { deadline: "asc" },
-      take: 6,
+      take: 5,
       include: { customer: true, status: true },
     }),
     db.project.findMany({
       where: { ...open, deadline: { gte: today, lte: soonEnd } },
       orderBy: { deadline: "asc" },
-      take: 6,
+      take: 5,
       include: { customer: true, status: true },
     }),
-    db.activity.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { user: true } }),
+    db.activity.findMany({ 
+      orderBy: { createdAt: "desc" }, 
+      take: 6, 
+      include: { user: true } 
+    }),
     db.project.count({ where: live }),
     db.project.findMany({
       where: live,
       include: { serviceArea: true, status: true }
     })
   ]);
+
+  // Operational Health Calculation
+  const onTrackCount = Math.max(0, openProjectsCount - overdueCount - dueSoonCount);
+  const healthScore = openProjectsCount === 0 
+    ? 100 
+    : Math.max(0, Math.round(((openProjectsCount - overdueCount) / openProjectsCount) * 100));
+  
+  const circumference = 2 * Math.PI * 38; // radius = 38
+  const strokeDashoffset = circumference - (circumference * healthScore) / 100;
+  const healthColor = healthScore >= 85 ? "var(--success)" : healthScore >= 65 ? "var(--primary)" : "var(--error)";
+
+  // Financial Overview
+  const totalPortfolioBudget = allProjects.reduce((sum, p) => sum + (p.budget || 0), 0);
+  const openProjectsList = allProjects.filter(p => !p.status.isClosed);
+  const avgProgress = openProjectsList.length > 0
+    ? Math.round(openProjectsList.reduce((sum, p) => sum + (p.progress || 0), 0) / openProjectsList.length)
+    : 0;
 
   // Chart Data Preparation
   const revenueByArea = areas.map(area => {
@@ -106,54 +134,143 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   const trendData = last6Months.map(({ name, projects, revenue }) => ({ name, projects, revenue }));
 
-  const projectTable = (rows: typeof overdue, empty: string) =>
-    rows.length === 0 ? (
-      <p className="empty">{empty}</p>
-    ) : (
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Project</th>
-              <th scope="col">Customer</th>
-              <th scope="col">Deadline</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p) => (
-              <tr key={p.id}>
-                <td>
-                  <Link href={`/projects/${p.id}`}>{p.name}</Link>
-                </td>
-                <td>{p.customer.name}</td>
-                <td>
-                  <DeadlineInfo deadline={p.deadline} closed={p.status.isClosed} soonDays={s.dueSoonDays} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={`Welcome back, ${user.name}. Today is ${fmtDate(today)}.`}>
-        <Link href="/customers/new" className="btn">
-          Add customer
-        </Link>
-        <Link href="/projects/new" className="btn btn-primary">
-          Add project
-        </Link>
-      </PageHeader>
-
       {one(sp.denied) && (
-        <div className="alert alert-error" role="alert">
+        <div className="alert alert-error" role="alert" style={{ marginBottom: "1.5rem" }}>
           Only admins can open the Settings screen.
         </div>
       )}
 
-      <section className="stats" aria-label="Key numbers">
+      {/* Bento Hero & Operations Health Radar */}
+      <section className="bento-hero" aria-label="Operational overview">
+        <div className="card bento-welcome-card">
+          <div>
+            <div className="bento-welcome-badge">
+              <Sparkles size={14} />
+              <span>Operational Control Center</span>
+            </div>
+            <h1 className="bento-welcome-title">
+              Welcome back, {user.name}
+            </h1>
+            <p className="bento-welcome-desc">
+              Here is your workspace overview for {fmtDate(today)}. Currently tracking {openProjectsCount} active deliverables across {customersCount} customers.
+            </p>
+            <p className="bento-snapshot-time" aria-label={`Dashboard snapshot at ${fmtDateTime(snapshotAt)}`}>
+              <span className="live-status-dot" aria-hidden="true" />
+              Last refreshed {fmtDateTime(snapshotAt)}
+            </p>
+          </div>
+
+          <div className="quick-dock-bar">
+            <Link href="/projects/new" className="dock-btn dock-btn-primary">
+              <Plus size={16} />
+              <span>New Project</span>
+            </Link>
+            <Link href="/customers/new" className="dock-btn">
+              <Users size={16} />
+              <span>Add Customer</span>
+            </Link>
+            {overdueCount > 0 && (
+              <Link href="/projects?scope=overdue" className="dock-btn" style={{ borderColor: "var(--error)", color: "var(--error)" }}>
+                <AlertCircle size={16} />
+                <span>Overdue ({overdueCount})</span>
+              </Link>
+            )}
+            {user.role === "ADMIN" && (
+              <Link href="/settings" className="dock-btn">
+                <SettingsIcon size={16} />
+                <span>Settings</span>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Circular Health Radar Gauge */}
+        <div className="card bento-radar-card">
+          <div className="radar-header">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <ShieldCheck size={18} style={{ color: healthColor }} />
+              <h3 style={{ margin: 0, fontSize: "1rem" }}>Health Radar</h3>
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Live Status</span>
+          </div>
+
+          <div className="radar-score-wrap">
+            <div className="radar-circle-wrap">
+              <svg width="90" height="90" viewBox="0 0 90 90" className="radar-svg">
+                <circle
+                  cx="45"
+                  cy="45"
+                  r="38"
+                  fill="transparent"
+                  stroke="var(--border)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="45"
+                  cy="45"
+                  r="38"
+                  fill="transparent"
+                  stroke={healthColor}
+                  strokeWidth="8"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  style={{ transition: "stroke-dashoffset 0.8s ease" }}
+                />
+              </svg>
+              <div className="radar-center-label">
+                {healthScore}%
+                <span>Score</span>
+              </div>
+            </div>
+
+            <div className="radar-breakdown">
+              <div className="radar-row">
+                <span className="radar-row-label">
+                  <span className="radar-dot" style={{ background: "var(--success)" }}></span>
+                  On Track
+                </span>
+                <span className="radar-row-val">{onTrackCount}</span>
+              </div>
+              <div className="radar-row">
+                <span className="radar-row-label">
+                  <span className="radar-dot" style={{ background: "var(--primary)" }}></span>
+                  Due Soon
+                </span>
+                <span className="radar-row-val">{dueSoonCount}</span>
+              </div>
+              <div className="radar-row">
+                <span className="radar-row-label">
+                  <span className="radar-dot" style={{ background: "var(--error)" }}></span>
+                  Overdue
+                </span>
+                <span className="radar-row-val" style={{ color: overdueCount > 0 ? "var(--error)" : undefined }}>
+                  {overdueCount}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", borderTop: "1px solid var(--border)", paddingTop: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>Portfolio Quality</span>
+            <strong style={{ color: healthColor }}>
+              {healthScore >= 85 ? "Optimal" : healthScore >= 65 ? "Steady" : "Action Required"}
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      {/* Bento Metric Stats Row */}
+      <section className="stats" aria-label="Key numbers" style={{ marginBottom: "1.5rem" }}>
+        <Link href="/projects?scope=open" className="stat">
+          <div className="stat-icon"><Briefcase size={20} /></div>
+          <div>
+            <strong>{openProjectsCount}</strong>
+            Active Projects
+          </div>
+        </Link>
         <Link href="/customers" className="stat">
           <div className="stat-icon"><Users size={20} /></div>
           <div>
@@ -161,30 +278,24 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             Customers
           </div>
         </Link>
-        <Link href="/projects?scope=open" className="stat">
-          <div className="stat-icon"><Briefcase size={20} /></div>
+        <div className="stat">
+          <div className="stat-icon" style={{ color: "var(--primary)" }}><DollarSign size={20} /></div>
           <div>
-            <strong>{openProjectsCount}</strong>
-            Open projects
+            <strong style={{ fontSize: "1.15rem" }}>{money(totalPortfolioBudget)}</strong>
+            Portfolio Value
           </div>
-        </Link>
-        <Link href="/projects?scope=overdue" className="stat" style={{ borderLeft: "4px solid var(--error)" }}>
-          <div className="stat-icon" style={{ color: "var(--error)" }}><AlertCircle size={20} /></div>
+        </div>
+        <div className="stat">
+          <div className="stat-icon" style={{ color: "var(--success)" }}><CheckCircle2 size={20} /></div>
           <div>
-            <strong style={{ color: "var(--error)" }}>{overdueCount}</strong>
-            Overdue
+            <strong>{avgProgress}%</strong>
+            Avg. Completion
           </div>
-        </Link>
-        <Link href="/projects?scope=dueSoon" className="stat" style={{ borderLeft: "4px solid var(--primary)" }}>
-          <div className="stat-icon" style={{ color: "var(--primary)" }}><Clock size={20} /></div>
-          <div>
-            <strong style={{ color: "var(--primary)" }}>{dueSoonCount}</strong>
-            Due soon
-          </div>
-        </Link>
+        </div>
       </section>
 
-      <div className="grid-3" style={{ marginBottom: "2rem" }}>
+      {/* Analytics Charts Grid */}
+      <div className="grid-3" style={{ marginBottom: "1.5rem" }}>
         <div className="card">
           <div className="card-header">
             <TrendingUp size={18} className="gold" />
@@ -208,60 +319,118 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
+      {/* Operational Pulse & Works Breakdown */}
       <div className="grid-2">
+        {/* Activity Pulse Stream */}
         <div className="card">
-          <div className="card-header">
-            <h3>Quick Actions</h3>
-          </div>
-          <div className="items">
-            <Link href="/projects/new" className="item-row">
-              <div className="stat-icon"><Plus size={16} /></div>
-              <div>
-                <strong>Create New Project</strong>
-                <span className="muted">Setup a new engagement</span>
-              </div>
-              <ArrowRight size={16} className="muted" />
-            </Link>
-            <Link href="/customers/new" className="item-row">
-              <div className="stat-icon"><Users size={16} /></div>
-              <div>
-                <strong>Register Customer</strong>
-                <span className="muted">Add a new business or individual</span>
-              </div>
-              <ArrowRight size={16} className="muted" />
-            </Link>
-            <Link href="/projects?scope=overdue" className="item-row">
-              <div className="stat-icon" style={{ color: "var(--error)" }}><AlertCircle size={16} /></div>
-              <div>
-                <strong>Review Overdue</strong>
-                <span className="muted">Handle {overdueCount} delayed projects</span>
-              </div>
-              <ArrowRight size={16} className="muted" />
+          <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <ActivityIcon size={18} className="gold" />
+              <h3 style={{ margin: 0 }}>Live Activity Pulse</h3>
+            </div>
+            <Link href="/projects" style={{ fontSize: "0.8rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+              View all <ChevronRight size={14} />
             </Link>
           </div>
+
+          {activity.length === 0 ? (
+            <p className="empty">No recent system activity recorded.</p>
+          ) : (
+            <div className="activity-pulse-list">
+              {activity.map((act) => (
+                <div key={act.id} className="activity-pulse-item">
+                  <div className="pulse-user-avatar">
+                    {act.user?.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img 
+                        src={act.user.image} 
+                        alt={act.user.name} 
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
+                    ) : (
+                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--primary)" }}>
+                        {act.user?.name ? act.user.name.charAt(0).toUpperCase() : "S"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="pulse-content">
+                    <div className="pulse-header">
+                      <span className="pulse-name">{act.user?.name ?? "System"}</span>
+                      <span className="pulse-time">{fmtDateTime(act.createdAt)}</span>
+                    </div>
+                    <p className="pulse-summary" title={act.summary}>
+                      {act.summary}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3>Works Analysis</h3>
-          </div>
-          <div className="items">
-            {statuses.map((st, i) => {
-              const count = perStatus[i];
-              const pct = totalProjects === 0 ? 0 : Math.round((count / totalProjects) * 100);
-              return (
-                <Link key={st.id} href={`/projects?status=${st.id}`} className="item-row no-border">
-                  <div style={{ width: "100%" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                      <strong>{st.label}</strong>
-                      <span className="muted" style={{ fontSize: "0.85rem" }}>{count} projects ({pct}%)</span>
+        {/* Works Analysis & Urgent Deliverables */}
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div>
+            <div className="card-header" style={{ marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0 }}>Works Distribution</h3>
+            </div>
+            <div className="items">
+              {statuses.map((st, i) => {
+                const count = perStatus[i];
+                const pct = totalProjects === 0 ? 0 : Math.round((count / totalProjects) * 100);
+                return (
+                  <Link key={st.id} href={`/projects?status=${st.id}`} className="item-row no-border" style={{ padding: "0.5rem 0" }}>
+                    <div style={{ width: "100%" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{st.label}</span>
+                        <span className="muted" style={{ fontSize: "0.8rem" }}>{count} ({pct}%)</span>
+                      </div>
+                      <Progress value={pct} color={st.color} />
                     </div>
-                    <Progress value={pct} color={st.color} />
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
+
+          {(overdue.length > 0 || dueSoon.length > 0) && (
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1.25rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--text)" }}>Priority Attention</h4>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  {overdue.length + dueSoon.length} items
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {[...overdue, ...dueSoon].slice(0, 4).map((p) => (
+                  <Link 
+                    key={p.id} 
+                    href={`/projects/${p.id}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "0.6rem 0.75rem",
+                      borderRadius: "8px",
+                      background: "var(--surface-hover)",
+                      border: "1px solid var(--border)",
+                      textDecoration: "none",
+                      color: "inherit",
+                      fontSize: "0.85rem"
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1, paddingRight: "0.75rem" }}>
+                      <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {p.name}
+                      </strong>
+                      <span className="muted" style={{ fontSize: "0.75rem" }}>{p.customer.name}</span>
+                    </div>
+                    <DeadlineInfo deadline={p.deadline} closed={p.status.isClosed} soonDays={s.dueSoonDays} />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

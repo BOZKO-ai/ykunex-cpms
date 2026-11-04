@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { Nav } from "@/components/nav";
@@ -7,24 +8,29 @@ import { CommandPalette } from "@/components/command-palette";
 import { PageTransition } from "@/components/page-transition";
 import { NotificationBell } from "@/components/notifications";
 import { User } from "lucide-react";
+import { checkAndCreateDeadlineNotifications } from "@/lib/notifications";
 import { MobileNav } from "@/components/mobile-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const s = await getSettings();
 
   const [projects, customers, u, notifications] = await Promise.all([
-    db.project.findMany({ where: { archived: false }, select: { id: true, name: true } }),
-    db.customer.findMany({ where: { archived: false }, select: { id: true, name: true } }),
+    db.project.findMany({ where: { archived: false }, select: { id: true, name: true }, take: 100 }),
+    db.customer.findMany({ where: { archived: false }, select: { id: true, name: true }, take: 100 }),
     db.user.findUnique({ where: { id: user.uid }, select: { id: true, name: true, image: true } }),
-    db.notification.findMany({
-      where: { userId: user.uid },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
+    checkAndCreateDeadlineNotifications(user.uid).then(() =>
+      db.notification.findMany({
+        where: { userId: user.uid },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      })
+    ),
   ]);
 
   const userImage = u?.image;
+  const serializedNotifications = notifications.map(n => ({ ...n, createdAt: n.createdAt.toISOString() }));
 
   return (
     <div className="shell">
@@ -41,18 +47,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         userName={user.name}
         userRole={user.role}
         logoutAction={logoutAction}
+        notificationsNode={
+          <NotificationBell 
+            initialNotifications={serializedNotifications}
+            markAsReadAction={markNotificationRead}
+            markAllAsReadAction={markAllNotificationsRead}
+          />
+        }
       />
 
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <aside className="sidebar">
-        <a className="brand" href="/">
+        <Link className="brand" href="/">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt={s.companyName} style={{ background: 'transparent', border: 'none', padding: 0 }} />
+          <img 
+            src={s.logoDataUrl || "/logo.svg"} 
+            alt={s.companyName} 
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              padding: 0,
+              mixBlendMode: 'normal',
+              filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.3))'
+            }} 
+          />
           <span>{s.companyName}</span>
-        </a>
-        <Nav isAdmin={user.role === "ADMIN"} />
+        </Link>
+        <Nav isAdmin={user.role === "ADMIN"} layoutIdPrefix="desktop" />
         <div className="userbox">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -69,11 +92,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <span className="muted">{user.role === "ADMIN" ? "Admin" : "Staff"}</span>
               </div>
             </div>
-            <NotificationBell 
-              initialNotifications={notifications.map(n => ({ ...n, createdAt: n.createdAt.toISOString() }))}
-              markAsReadAction={markNotificationRead}
-              markAllAsReadAction={markAllNotificationsRead}
-            />
+            <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+              <ThemeToggle />
+              <NotificationBell 
+                initialNotifications={serializedNotifications}
+                markAsReadAction={markNotificationRead}
+                markAllAsReadAction={markAllNotificationsRead}
+              />
+            </div>
           </div>
           <form action={logoutAction} style={{ width: "100%" }}>
             <button type="submit" className="btn" style={{ width: "100%" }}>

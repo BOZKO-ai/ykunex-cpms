@@ -127,6 +127,8 @@ export function SubmitButton({ children, className = "btn btn-primary" }: { chil
   );
 }
 
+import { ModernConfirmButton } from "./confirm-modal";
+
 /** Submit button that asks for confirmation first (used for every archive/remove action). */
 export function ConfirmButton({
   message,
@@ -140,16 +142,13 @@ export function ConfirmButton({
   ariaLabel?: string;
 }) {
   return (
-    <button
-      type="submit"
+    <ModernConfirmButton
+      message={message}
       className={className}
-      aria-label={ariaLabel}
-      onClick={(e) => {
-        if (!window.confirm(message)) e.preventDefault();
-      }}
+      ariaLabel={ariaLabel}
     >
       {children}
-    </button>
+    </ModernConfirmButton>
   );
 }
 

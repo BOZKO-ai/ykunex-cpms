@@ -8,11 +8,17 @@ import { validate, type FormState } from "@/lib/forms";
 import { passwordChangeSchema, userProfileSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 import { parseDate } from "@/lib/dates";
+import { saveFile } from "@/lib/storage";
 
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const v = validate(userProfileSchema, fd);
   if (!("data" in v)) return v.state;
+
+  let image = v.data.image || null;
+  if (image && image.startsWith("data:")) {
+    image = await saveFile(image, "profile.jpg");
+  }
 
   const data = {
     name: v.data.name,
@@ -20,7 +26,7 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     bio: v.data.bio,
     department: v.data.department,
     birthDate: v.data.birthDate ? parseDate(v.data.birthDate) : null,
-    image: v.data.image || null,
+    image,
   };
 
   await db.user.update({

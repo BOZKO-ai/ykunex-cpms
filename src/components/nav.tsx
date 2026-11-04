@@ -75,7 +75,7 @@ const items = [
     )
   },
   {
-    href: "/admin/logs",
+    href: "/activity",
     label: "Audit Logs",
     admin: true,
     icon: (
@@ -88,7 +88,15 @@ const items = [
 
 import { motion } from "framer-motion";
 
-export function Nav({ isAdmin, onItemClick }: { isAdmin: boolean; onItemClick?: () => void }) {
+export function Nav({ 
+  isAdmin, 
+  onItemClick,
+  layoutIdPrefix = "desktop"
+}: { 
+  isAdmin: boolean; 
+  onItemClick?: () => void;
+  layoutIdPrefix?: string;
+}) {
   const path = usePathname();
   return (
     <nav aria-label="Main" className="sidebar-nav">
@@ -96,7 +104,14 @@ export function Nav({ isAdmin, onItemClick }: { isAdmin: boolean; onItemClick?: 
         {items
           .filter((i) => !i.admin || isAdmin)
           .map((i) => {
-            const active = i.href === "/" ? path === "/" : path.startsWith(i.href);
+            // Precise active matching: prevent /projects and /projects/board collision
+            const active = 
+              i.href === "/"
+                ? path === "/"
+                : i.href === "/projects"
+                  ? path === "/projects" || (path.startsWith("/projects/") && !path.startsWith("/projects/board"))
+                  : path === i.href || path.startsWith(i.href + "/");
+
             return (
               <li key={i.href} style={{ position: "relative" }}>
                 <Link 
@@ -111,7 +126,7 @@ export function Nav({ isAdmin, onItemClick }: { isAdmin: boolean; onItemClick?: 
                 </Link>
                 {active && (
                   <motion.div 
-                    layoutId="nav-active"
+                    layoutId={`nav-active-${layoutIdPrefix}`}
                     className="absolute inset-0 bg-primary/10 rounded-xl"
                     style={{ 
                       position: "absolute",

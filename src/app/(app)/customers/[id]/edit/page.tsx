@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getList } from "@/lib/lists";
 import { CustomerForm } from "@/components/forms";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { PageHeader } from "@/components/ui";
 import { saveCustomer } from "../../actions";
 
@@ -17,6 +18,13 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
   const statuses = await getList("CUSTOMER_STATUS", [c.statusId]);
   return (
     <>
+      <Breadcrumbs 
+        items={[
+          { label: "Customers", href: "/customers" },
+          { label: c.name, href: `/customers/${c.id}` },
+          { label: "Edit" }
+        ]} 
+      />
       <PageHeader title={`Edit ${c.name}`} subtitle="Fields marked * are required." />
       <CustomerForm
         action={saveCustomer.bind(null, c.id)}

@@ -8,25 +8,26 @@ datasource db {
 }
 
 model User {
-  id           Int             @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   name         String
-  email        String          @unique
+  email        String   @unique
   passwordHash String
-  role         String          @default("STAFF") // ADMIN | MANAGER | STAFF | VIEWER
-  active       Boolean         @default(true)
-  createdAt    DateTime        @default(now())
+  role         String   @default("STAFF") // ADMIN | MANAGER | STAFF | VIEWER
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
   // Advanced Profile Details
-  image        String?         @db.LongText // Base64 image data
-  phone        String?
-  bio          String?         @db.Text
-  department   String?
-  birthDate    DateTime?
+  image      String?   @db.LongText // Base64 image data
+  phone      String?
+  bio        String?   @db.Text
+  department String?
+  birthDate  DateTime?
 
-  projects     Project[]
-  updates      ProjectUpdate[]
-  activities   Activity[]
-  notifications Notification[] @relation("UserNotifications")
+  projects      Project[]
+  assignedTasks Task[]          @relation("TaskAssignee")
+  updates       ProjectUpdate[]
+  activities    Activity[]
+  notifications Notification[]  @relation("UserNotifications")
 }
 
 // One table powers every admin-editable dropdown (service areas, customer & project statuses).
@@ -65,24 +66,25 @@ model Customer {
 }
 
 model Project {
-  id            Int             @id @default(autoincrement())
+  id            Int               @id @default(autoincrement())
   name          String
-  description   String          @default("")
+  description   String            @default("")
   customerId    Int
-  customer      Customer        @relation(fields: [customerId], references: [id])
+  customer      Customer          @relation(fields: [customerId], references: [id])
   serviceAreaId Int
-  serviceArea   ListItem        @relation("ProjectArea", fields: [serviceAreaId], references: [id])
+  serviceArea   ListItem          @relation("ProjectArea", fields: [serviceAreaId], references: [id])
   statusId      Int
-  status        ListItem        @relation("ProjectStatus", fields: [statusId], references: [id])
+  status        ListItem          @relation("ProjectStatus", fields: [statusId], references: [id])
   startDate     DateTime
   deadline      DateTime
-  progress      Int             @default(0)
+  progress      Int               @default(0)
   budget        Float?
+  paidAmount    Float             @default(0)
   assignedToId  Int?
-  assignedTo    User?           @relation(fields: [assignedToId], references: [id])
-  archived      Boolean         @default(false)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  assignedTo    User?             @relation(fields: [assignedToId], references: [id])
+  archived      Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   updates       ProjectUpdate[]
   tasks         Task[]
   documents     ProjectDocument[]
@@ -105,12 +107,19 @@ model ProjectUpdate {
 }
 
 model Task {
-  id        Int      @id @default(autoincrement())
-  projectId Int
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title     String
-  done      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  projectId  Int
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title      String
+  done       Boolean   @default(false)
+  priority   String    @default("MEDIUM") // LOW | MEDIUM | HIGH
+  deadline   DateTime?
+  assigneeId Int?
+  assignee   User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId, done])
+  @@index([deadline])
 }
 
 model Setting {
@@ -120,10 +129,10 @@ model Setting {
 
 // Persistent brute-force guard: 5 failures => 5 minute lock per email. Survives restarts.
 model LoginAttempt {
-  email       String   @id
-  count       Int      @default(0)
+  email       String    @id
+  count       Int       @default(0)
   lockedUntil DateTime?
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
 
   @@index([lockedUntil])
 }
@@ -148,10 +157,11 @@ model Notification {
   message   String
   type      String   @default("INFO") // INFO | SUCCESS | WARNING | ALERT
   read      Boolean  @default(false)
-  link      String?  // Optional URL to redirect to
+  link      String? // Optional URL to redirect to
   createdAt DateTime @default(now())
 
   @@index([userId, read])
+  @@index([userId, createdAt])
 }
 
 model ProjectDocument {
@@ -159,8 +169,8 @@ model ProjectDocument {
   projectId Int
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name      String
-  type      String   // mime type
-  size      Int      // size in bytes
+  type      String // mime type
+  size      Int // size in bytes
   data      String   @db.LongText // Base64 data
   createdAt DateTime @default(now())
 

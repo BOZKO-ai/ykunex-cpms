@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { getSettings } from "@/lib/settings";
 import { readableText } from "@/lib/color";
+import { ToastProvider } from "@/components/toast";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -21,8 +22,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     "--accent-contrast": readableText(s.accentColor),
   } as React.CSSProperties;
   return (
-    <html lang="en">
-      <body style={style}>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('yakunex-theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body style={style}>
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </body>
     </html>
   );
 }

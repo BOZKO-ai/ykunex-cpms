@@ -28,6 +28,7 @@ interface Status {
 export function KanbanBoard({ statuses, projects }: { statuses: Status[]; projects: any[] }) {
   const [items, setItems] = useState<Project[]>(projects);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOverStatusId, setDragOverStatusId] = useState<number | null>(null);
 
   const onDragStart = (e: React.DragEvent, id: number) => {
     setDraggingId(id);
@@ -38,6 +39,7 @@ export function KanbanBoard({ statuses, projects }: { statuses: Status[]; projec
     e.preventDefault();
     const projectId = parseInt(e.dataTransfer.getData("projectId"));
     setDraggingId(null);
+    setDragOverStatusId(null);
 
     const project = items.find((p) => p.id === projectId);
     if (!project || project.statusId === statusId) return;
@@ -53,8 +55,9 @@ export function KanbanBoard({ statuses, projects }: { statuses: Status[]; projec
     await updateProjectStatus(projectId, statusId);
   };
 
-  const onDragOver = (e: React.DragEvent) => {
+  const onDragOver = (e: React.DragEvent, statusId: number) => {
     e.preventDefault();
+    setDragOverStatusId(statusId);
   };
 
   return (
@@ -62,8 +65,9 @@ export function KanbanBoard({ statuses, projects }: { statuses: Status[]; projec
       {statuses.map((status) => (
         <div
           key={status.id}
-          className="kanban-column"
-          onDragOver={onDragOver}
+          className={`kanban-column${dragOverStatusId === status.id ? " drag-over" : ""}`}
+          onDragOver={(e) => onDragOver(e, status.id)}
+          onDragLeave={() => setDragOverStatusId(null)}
           onDrop={(e) => onDrop(e, status.id)}
         >
           <div className="kanban-column-header">

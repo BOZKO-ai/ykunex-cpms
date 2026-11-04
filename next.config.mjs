@@ -1,7 +1,16 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
-  experimental: { serverActions: { bodySizeLimit: "1mb" } },
+  outputFileTracingRoot: __dirname,
+  experimental: {
+    serverActions: { bodySizeLimit: "2mb" },
+    optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
+  },
   async headers() {
     return [
       {

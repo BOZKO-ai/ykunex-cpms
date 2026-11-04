@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Bell, Check, ExternalLink, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, Check, ExternalLink, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { fmtDateTime } from "@/lib/dates";
+import { useToast } from "./toast";
 
 export type Notification = {
   id: number;
@@ -24,13 +26,22 @@ export function NotificationBell({
   markAsReadAction: (id: number) => Promise<void>;
   markAllAsReadAction: () => Promise<void>;
 }) {
+  const router = useRouter();
+  const { toast: showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const [isUpdating, setIsUpdating] = useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Sync state if initialNotifications updates from server
   useEffect(() => {
+    setNotifications(initialNotifications);
+  }, [initialNotifications]);
+
+  // Click outside and escape handlers: ONLY active when dropdown is open
+  useEffect(() => {
+    if (!isOpen) return;
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -41,7 +52,13 @@ export function NotificationBell({
     }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
-    
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     let polling = false;
     const controller = new AbortController();
 
@@ -55,8 +72,25 @@ export function NotificationBell({
           signal: controller.signal,
         });
         if (res.ok) {
-          const data = await res.json();
-          setNotifications(data);
+          const data: Notification[] = await res.json();
+          setNotifications(prev => {
+            const prevIds = new Set(prev.map(n => n.id));
+            const brandNew = data.filter(n => !n.read && !prevIds.has(n.id));
+            if (brandNew.length > 0) {
+              const latest = brandNew[0];
+              const toastType = 
+                latest.type === "ALERT" ? "error" :
+                latest.type === "WARNING" ? "warning" :
+                latest.type === "SUCCESS" ? "success" : "info";
+              showToast({
+                title: latest.title,
+                message: latest.message,
+                type: toastType,
+                duration: 6000
+              });
+            }
+            return data;
+          });
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -66,54 +100,121 @@ export function NotificationBell({
       }
     }
 
-    // Poll only while the page is visible and avoid overlapping requests.
+    let es: EventSource | null = null;
+    if (typeof window !== "undefined" && "EventSource" in window) {
+      try {
+        es = new EventSource("/api/notifications/stream");
+        es.onmessage = (event) => {
+          try {
+            const data: Notification[] = JSON.parse(event.data);
+            setNotifications(prev => {
+              const prevIds = new Set(prev.map(n => n.id));
+              const brandNew = data.filter(n => !n.read && !prevIds.has(n.id));
+              if (brandNew.length > 0 && prev.length > 0) {
+                const latest = brandNew[0];
+                const toastType = 
+                  latest.type === "ALERT" ? "error" :
+                  latest.type === "WARNING" ? "warning" :
+                  latest.type === "SUCCESS" ? "success" : "info";
+                showToast({
+                  title: latest.title,
+                  message: latest.message,
+                  type: toastType,
+                  duration: 6000
+                });
+              }
+              return data;
+            });
+          } catch {}
+        };
+      } catch {
+        // SSE not available, fallback will poll
+      }
+    }
+
+    // Fallback Polling every 30s when tab is visible
     const interval = setInterval(() => {
-      void pollNotifications();
+      if (!es || es.readyState === EventSource.CLOSED) {
+        void pollNotifications();
+      }
     }, 30000);
     document.addEventListener("visibilitychange", pollNotifications);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("visibilitychange", pollNotifications);
       clearInterval(interval);
+      if (es) es.close();
       controller.abort();
     };
   }, []);
 
-  const handleMarkRead = async (id: number) => {
-    if (isUpdating) return;
-    setIsUpdating(true);
+  const handleMarkRead = async (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    // Optimistic update
+    setNotifications(current => current.map(n => n.id === id ? { ...n, read: true } : n));
     try {
       await markAsReadAction(id);
-      setNotifications(current => current.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (isUpdating || unreadCount === 0) return;
+    setIsUpdating(true);
+    // Optimistic update
+    setNotifications(current => current.map(n => ({ ...n, read: true })));
+    try {
+      await markAllAsReadAction();
+    } catch (err) {
+      console.error("Failed to mark all notifications as read", err);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const handleMarkAllRead = async () => {
-    if (isUpdating) return;
-    setIsUpdating(true);
-    try {
-      await markAllAsReadAction();
-      setNotifications(current => current.map(n => ({ ...n, read: true })));
-    } finally {
-      setIsUpdating(false);
+  const handleItemClick = (n: Notification) => {
+    if (!n.read) {
+      void handleMarkRead(n.id);
+    }
+    if (n.link) {
+      setIsOpen(false);
+      router.push(n.link);
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type?.toUpperCase()) {
+      case "ALERT":
+        return <AlertCircle size={16} className="notif-type-icon notif-type-alert" />;
+      case "WARNING":
+        return <AlertTriangle size={16} className="notif-type-icon notif-type-warning" />;
+      case "SUCCESS":
+        return <CheckCircle2 size={16} className="notif-type-icon notif-type-success" />;
+      default:
+        return <Info size={16} className="notif-type-icon notif-type-info" />;
     }
   };
 
   return (
     <div className="notification-bell-container" ref={dropdownRef}>
       <button 
+        type="button"
         className={`bell-btn ${unreadCount > 0 ? "has-unread" : ""}`}
-        onClick={() => setIsOpen(open => !open)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(open => !open);
+        }}
         aria-label="Notifications"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
         <Bell size={20} />
-        {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
+        {unreadCount > 0 && (
+          <span className="unread-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {isOpen && (
@@ -138,7 +239,22 @@ export function NotificationBell({
               <p className="empty">No notifications yet.</p>
             ) : (
               notifications.map((n) => (
-                <div key={n.id} className={`notification-item ${n.read ? "read" : "unread"}`}>
+                <div 
+                  key={n.id} 
+                  className={`notification-item ${n.read ? "read" : "unread"} ${n.link ? "clickable" : ""}`}
+                  onClick={() => handleItemClick(n)}
+                  onKeyDown={(event) => {
+                    if (n.link && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault();
+                      handleItemClick(n);
+                    }
+                  }}
+                  role={n.link ? "button" : undefined}
+                  tabIndex={n.link ? 0 : undefined}
+                >
+                  <div className="notif-icon-col">
+                    {getTypeIcon(n.type)}
+                  </div>
                   <div className="notif-content">
                     <div className="notif-title">
                       <strong>{n.title}</strong>
@@ -147,25 +263,17 @@ export function NotificationBell({
                     <p>{n.message}</p>
                     <span className="notif-time">{fmtDateTime(new Date(n.createdAt))}</span>
                     {n.link && (
-                      <Link 
-                        href={n.link} 
-                        className="notif-link" 
-                        onClick={() => {
-                          void handleMarkRead(n.id);
-                          setIsOpen(false);
-                        }}
-                      >
+                      <span className="notif-link">
                         View details <ExternalLink size={12} />
-                      </Link>
+                      </span>
                     )}
                   </div>
                   {!n.read && (
                     <button 
-                      onClick={() => void handleMarkRead(n.id)}
+                      onClick={(e) => void handleMarkRead(n.id, e)}
                       className="mark-read-btn"
                       title="Mark as read"
                       aria-label={`Mark ${n.title} as read`}
-                      disabled={isUpdating}
                     >
                       <Check size={14} />
                     </button>

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
@@ -18,19 +19,20 @@ function secretKey(): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-export async function createSession(s: Session): Promise<void> {
+export async function createSession(s: Session, remember = true): Promise<void> {
   const token = await new SignJWT({ ...s })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(secretKey());
-  (await cookies()).set(SESSION_COOKIE, token, {
+  const cookie = {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.COOKIE_SECURE === "true",
     path: "/",
-    maxAge: MAX_AGE,
-  });
+    ...(remember ? { maxAge: MAX_AGE } : {}),
+  } as const;
+  (await cookies()).set(SESSION_COOKIE, token, cookie);
 }
 
 export async function destroySession(): Promise<void> {
@@ -38,7 +40,7 @@ export async function destroySession(): Promise<void> {
 }
 
 /** Reads the signed cookie only (no DB hit). Use requireUser() to protect pages and actions. */
-export async function getSession(): Promise<Session | null> {
+export const getSession = cache(async (): Promise<Session | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
@@ -51,16 +53,24 @@ export async function getSession(): Promise<Session | null> {
   } catch {
     return null;
   }
-}
+});
 
 /** Every page and server action calls this: cookie must be valid AND the user must still exist and be active. */
-export async function requireUser(): Promise<Session> {
+export const requireUser = cache(async (): Promise<Session> => {
   const s = await getSession();
   if (!s) redirect("/login");
-  const u = await db.user.findUnique({ where: { id: s.uid } });
-  if (!u || !u.active) redirect("/login");
-  return { uid: u.id, name: u.name, role: u.role as Role };
-}
+  try {
+    const u = await db.user.findUnique({ where: { id: s.uid } });
+    if (!u || !u.active) redirect("/login");
+    return { uid: u.id, name: u.name, role: u.role as Role };
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "digest" in err && String((err as { digest: string }).digest).startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    console.error("[Auth] Database error in requireUser:", err instanceof Error ? err.message : err);
+    redirect("/login?error=db_offline");
+  }
+});
 
 export async function requireAdmin(): Promise<Session> {
   const u = await requireUser();
