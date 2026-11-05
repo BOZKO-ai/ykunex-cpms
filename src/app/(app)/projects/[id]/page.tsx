@@ -12,6 +12,7 @@ import { FileUpload } from "@/components/file-upload";
 import { ProjectTimer } from "@/components/project-timer";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProjectDocumentsList } from "@/components/project-documents";
+import { PaymentLedger } from "@/components/payment-ledger";
 import { File as FileIcon, Download, Trash2, Paperclip, Printer } from "lucide-react";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +34,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       updates: { orderBy: { createdAt: "desc" }, include: { author: true } },
       tasks: { orderBy: [{ done: "asc" }, { deadline: "asc" }, { id: "asc" }], include: { assignee: true } },
       documents: { orderBy: { createdAt: "desc" } },
+      payments: { orderBy: [{ paidOn: "desc" }, { id: "desc" }] },
     },
   });
   if (!p) notFound();
@@ -79,52 +81,58 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         )}
       </PageHeader>
 
-      <section className="card" aria-labelledby="details">
-        <h2 id="details">Details</h2>
-        <dl className="meta">
+      <section className="card project-details-card" aria-labelledby="details">
+        <div className="section-heading">
           <div>
+            <p className="eyebrow">Project overview</p>
+            <h2 id="details">Details</h2>
+          </div>
+          <span className="project-id">#{p.id}</span>
+        </div>
+        <dl className="meta project-details-grid">
+          <div className="detail-item">
             <dt>Customer</dt>
             <dd>
               <Link href={`/customers/${p.customerId}`}>{p.customer.name}</Link>
             </dd>
           </div>
-          <div>
+          <div className="detail-item">
             <dt>Status</dt>
             <dd>
               <Badge label={p.status.label} color={p.status.color} active={!p.status.isClosed} />
             </dd>
           </div>
-          <div>
+          <div className="detail-item">
             <dt>Service area</dt>
             <dd>{p.serviceArea.label}</dd>
           </div>
-          <div>
+          <div className="detail-item">
             <dt>Assigned to</dt>
             <dd>{p.assignedTo?.name ?? "Unassigned"}</dd>
           </div>
-          <div>
+          <div className="detail-item">
             <dt>Start date</dt>
             <dd>{fmtDate(p.startDate)}</dd>
           </div>
-          <div>
+          <div className="detail-item">
             <dt>Deadline</dt>
             <dd>
               <DeadlineInfo deadline={p.deadline} closed={p.status.isClosed} soonDays={s.dueSoonDays} />
             </dd>
           </div>
-          <div>
+          <div className="detail-item detail-finance">
             <dt>Budget</dt>
             <dd>{money(p.budget)}</dd>
           </div>
-          <div>
+          <div className="detail-item detail-finance">
             <dt>Paid</dt>
             <dd>{money(p.paidAmount)}</dd>
           </div>
-          <div>
+          <div className="detail-item detail-finance">
             <dt>Due</dt>
             <dd>{money(p.budget === null ? null : Math.max(0, p.budget - p.paidAmount))}</dd>
           </div>
-          <div>
+          <div className="detail-item">
             <dt>Payment status</dt>
             <dd>
               <span className={`payment-status payment-status-${p.budget === null ? "unknown" : p.paidAmount >= p.budget ? "paid" : p.paidAmount > 0 ? "partial" : "due"}`}>
@@ -132,7 +140,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               </span>
             </dd>
           </div>
-          <div>
+          <div className="detail-item detail-progress">
             <dt>Progress</dt>
             <dd>
               <Progress value={p.progress} />
@@ -140,12 +148,21 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </div>
         </dl>
         {p.description && (
-          <>
-            <h3 style={{ marginTop: "1rem" }}>Description</h3>
+          <div className="project-description">
+            <h3>Description</h3>
             <p className="pre">{p.description}</p>
-          </>
+          </div>
         )}
       </section>
+
+      <PaymentLedger
+        projectId={p.id}
+        budget={p.budget}
+        paid={p.paidAmount}
+        payments={p.payments}
+        canRecord={userCanEdit}
+        canRemove={userIsManager}
+      />
 
       <div className="grid-2">
         <section className="card" aria-labelledby="documents">
@@ -159,27 +176,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         {userCanEdit && (
           <div className="card" style={{ background: "rgba(255,255,255,0.02)", marginBottom: "1.5rem" }}>
             <ActionForm action={addDocument.bind(null, p.id)} prefix="add-doc">
-              <FileUpload 
-                onFileSelect={(file) => {
-                  // This is a bit of a hack to get file data into the form
-                  // In a real app we might use a hidden input or a more complex form component
-                  if (file) {
-                    const form = document.querySelector('form[prefix="add-doc"]') as HTMLFormElement;
-                    if (form) {
-                      ['name', 'type', 'size', 'data'].forEach(key => {
-                        let input = form.querySelector(`input[name="${key}"]`) as HTMLInputElement;
-                        if (!input) {
-                          input = document.createElement('input');
-                          input.type = 'hidden';
-                          input.name = key;
-                          form.appendChild(input);
-                        }
-                        input.value = String((file as any)[key]);
-                      });
-                    }
-                  }
-                }} 
-              />
+              <FileUpload />
               <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end" }}>
                 <SubmitButton>Attach File</SubmitButton>
               </div>

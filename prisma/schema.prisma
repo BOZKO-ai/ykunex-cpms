@@ -88,6 +88,7 @@ model Project {
   updates       ProjectUpdate[]
   tasks         Task[]
   documents     ProjectDocument[]
+  payments      Payment[]
 
   @@index([deadline])
   @@index([customerId])
@@ -175,4 +176,20 @@ model ProjectDocument {
   createdAt DateTime @default(now())
 
   @@index([projectId])
+}
+
+// Payment ledger: one row per payment received. Project.paidAmount is kept in step (increment / decrement).
+model Payment {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  amount    Float
+  paidOn    DateTime
+  method    String   @default("BANK_TRANSFER") // BANK_TRANSFER | CASH | CHEQUE | CARD | OTHER
+  reference String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([paidOn])
 }

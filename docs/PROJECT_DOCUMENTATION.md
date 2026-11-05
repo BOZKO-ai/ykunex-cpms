@@ -109,3 +109,15 @@ destructive because the assessment seed intentionally resets dummy data.
 - Notes are append-only to keep history trustworthy.
 - A future iteration could add user management, calendar/timeline views,
   reminders, PDF reports, migrations/CI, and Playwright end-to-end tests.
+
+## v3 additions: decisions
+| Decision | Why |
+|---|---|
+| `Payment` table plus `Project.paidAmount` kept in step | Gives a history (who paid what, when) without breaking existing dashboards and reports that read `paidAmount` |
+| Manual "paid amount" field removed from the project form | Two ways to edit the same number would drift apart; payments now go through the ledger only |
+| Server-side role checks (`requireEditor`, `requireManager`) | Hiding buttons is not security: actions must refuse VIEWER users themselves |
+| Calendar built as a server-rendered month grid (no library) | Fewer dependencies, works without JavaScript, easy to explain |
+| Status shown with symbols and text, not colour alone | Accessibility (R9) |
+| Extra look-and-feel kept in `pro.css`, loaded after `globals.css` | Existing styles stay untouched; the refinement can be removed by deleting one import |
+
+Known limitation: the ledger keeps a running total, so editing the database by hand can desync `paidAmount` from the ledger rows.

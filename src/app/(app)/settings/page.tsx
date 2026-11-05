@@ -97,6 +97,9 @@ export default async function SettingsPage() {
           <a className="btn" href="/export/projects">
             Projects CSV
           </a>
+          <a className="btn" href="/export/payments">
+            Payments CSV
+          </a>
         </div>
       </section>
     </>

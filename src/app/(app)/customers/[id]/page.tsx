@@ -60,6 +60,9 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         <Link href={`/customers/${c.id}/edit`} className="btn">
           Edit
         </Link>
+        <Link href={`/customers/${c.id}/report`} className="btn">
+          Report
+        </Link>
         <Link href={`/projects/new?customerId=${c.id}`} className="btn btn-primary">
           Add project
         </Link>

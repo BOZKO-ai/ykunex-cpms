@@ -9,6 +9,7 @@ import { DeadlineInfo, Progress } from "@/components/ui";
 import { RevenueChart, StatusPieChart, TrendChart } from "@/components/charts";
 import { 
   Users, 
+  Calendar,
   Briefcase, 
   AlertCircle, 
   Clock, 
@@ -148,7 +149,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <div>
             <div className="bento-welcome-badge">
               <Sparkles size={14} />
-              <span>Operational Control Center</span>
+              <span>Workspace overview</span>
             </div>
             <h1 className="bento-welcome-title">
               Welcome back, {user.name}
@@ -170,6 +171,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <Link href="/customers/new" className="dock-btn">
               <Users size={16} />
               <span>Add Customer</span>
+            </Link>
+            <Link href="/calendar" className="dock-btn">
+              <Calendar size={16} />
+              <span>Calendar</span>
             </Link>
             {overdueCount > 0 && (
               <Link href="/projects?scope=overdue" className="dock-btn" style={{ borderColor: "var(--error)", color: "var(--error)" }}>
@@ -326,7 +331,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <ActivityIcon size={18} className="gold" />
-              <h3 style={{ margin: 0 }}>Live Activity Pulse</h3>
+              <h3 style={{ margin: 0 }}>Recent activity</h3>
             </div>
             <Link href="/projects" style={{ fontSize: "0.8rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
               View all <ChevronRight size={14} />

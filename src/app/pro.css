@@ -1,0 +1,108 @@
+/* Yakunex "pro" layer. Loaded after globals.css, so it refines the base look:
+   calmer surfaces, tighter rhythm, tabular numbers, a gold rail on the active nav item.
+   It also styles the calendar and payment ledger. */
+
+:root {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+[data-theme="light"] {
+  --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+body { -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 1; }
+h1, h2, h3 { letter-spacing: -0.015em; }
+.num { font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Surfaces: flat and quiet instead of blurred glass */
+.main { animation-duration: 0.25s; }
+.card { padding: 1.5rem; backdrop-filter: none; -webkit-backdrop-filter: none; transition: border-color 0.15s ease; }
+.card:hover { transform: none; border-color: var(--border-hover); }
+.sidebar { backdrop-filter: none; -webkit-backdrop-filter: none; padding: 1.25rem 1rem; gap: 1.5rem; }
+.page-header h1 { font-size: 1.75rem; font-weight: 700; }
+
+/* Project details */
+.project-details-card { padding: clamp(1.25rem, 3vw, 2rem); }
+.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.section-heading h2 { margin: 0; }
+.eyebrow { margin: 0 0 0.35rem; color: var(--primary); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.project-id { color: var(--text-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.project-details-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin: 0; }
+.detail-item { min-width: 0; padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--surface) 72%, transparent); }
+.detail-item dt { margin-bottom: 0.35rem; color: var(--text-muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.detail-item dd { min-height: 1.6rem; margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+.detail-item dd a { color: var(--primary); }
+.detail-item dd a:hover { text-decoration: underline; }
+.detail-finance { border-color: color-mix(in srgb, var(--primary) 25%, var(--border)); }
+.detail-finance dd { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.detail-progress { grid-column: 1 / -1; }
+.detail-progress dd { display: flex; align-items: center; }
+.project-description { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.project-description h3 { margin-bottom: 0.6rem; font-size: 1rem; }
+.project-description .pre { margin: 0; color: var(--text-muted); }
+
+/* Stats */
+.stat { padding: 1.1rem 1.25rem; gap: 1rem; }
+.stat:hover { transform: none; }
+.stat strong { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+/* Buttons */
+.btn { border-radius: var(--radius-md); }
+.btn:hover { transform: none; }
+.btn:active { transform: translateY(1px); }
+.btn-link { background: none; border: 0; padding: 0.25rem 0.5rem; min-height: 0; text-decoration: underline; color: var(--error); }
+
+/* Tables: quiet header, row hover, no shouting capitals */
+th { background: transparent; color: var(--text-muted); text-transform: none; letter-spacing: 0.01em; font-size: 0.78rem; font-weight: 600; border-bottom: 1px solid var(--border); }
+tbody tr:hover td { background: color-mix(in srgb, var(--text) 4%, transparent); }
+.badge { text-transform: none; letter-spacing: 0; font-size: 0.78rem; }
+
+/* Sidebar navigation: grouped, with a gold rail on the current page */
+.nav-group { list-style: none; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); padding: 1rem 0.75rem 0.35rem; }
+.sidebar-nav li:first-child.nav-group { padding-top: 0; }
+.sidebar-nav a.active { box-shadow: inset 3px 0 0 var(--primary); }
+
+/* Payment ledger */
+.ledger-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+.ledger-summary span { display: block; font-size: 0.78rem; color: var(--text-muted); }
+.ledger-summary strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.ledger-meter { height: 8px; border-radius: 999px; background: var(--surface-hover); overflow: hidden; margin-top: 1rem; }
+.ledger-meter span { display: block; height: 100%; background: var(--success); }
+
+/* Calendar */
+.cal-bar { display: flex; align-items: center; gap: 1rem; margin: 0.5rem 0 1rem; }
+.cal-title { margin: 0; font-size: 1.25rem; min-width: 11rem; text-align: center; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; margin: 0 0 1rem; padding: 0; font-size: 0.82rem; color: var(--text-muted); }
+.cal-key { display: inline-block; width: 1.25rem; text-align: center; font-weight: 700; }
+.cal-key.late { color: var(--error); } .cal-key.soon { color: var(--warning); } .cal-key.done { color: var(--success); }
+table.cal { table-layout: fixed; min-width: 760px; }
+table.cal th { text-align: center; }
+table.cal td { height: 112px; vertical-align: top; padding: 0.4rem; border: 1px solid var(--border); overflow: hidden; }
+.cal-out { background: color-mix(in srgb, var(--text) 3%, transparent); }
+.cal-num { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6rem; height: 1.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+.cal-today { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.cal-today .cal-num { background: var(--primary); color: var(--primary-contrast); }
+.cal-ev { display: block; margin-top: 0.2rem; padding: 0.12rem 0.4rem; font-size: 0.74rem; border-left: 3px solid var(--border-hover); border-radius: 4px; background: var(--surface-hover); color: var(--text); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev:hover { background: color-mix(in srgb, var(--text) 10%, var(--surface-hover)); }
+.cal-ev.late { border-left-color: var(--error); } .cal-ev.soon { border-left-color: var(--warning); }
+.cal-ev.done { border-left-color: var(--success); opacity: 0.75; } .cal-ev.task { border-left-style: dashed; }
+.cal-more { display: block; margin-top: 0.2rem; font-size: 0.72rem; color: var(--text-muted); }
+.cal-agenda-meta { display: flex; align-items: center; gap: 0.75rem; }
+.cal-chip.late { color: var(--error); border-color: var(--error); }
+.cal-chip.soon { color: var(--warning); border-color: var(--warning); }
+.cal-chip.done { color: var(--success); border-color: var(--success); }
+
+@media print { .nav-group { display: none; } }
+
+@media (max-width: 900px) {
+  .project-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .project-details-grid { grid-template-columns: 1fr; }
+  .detail-progress { grid-column: auto; }
+}

@@ -59,6 +59,7 @@ verification boundaries, demonstration plan, and final submission checklist.
 | Command | What it does |
 |---|---|
 | `npm run setup` | Create/refresh MySQL schema and **reset** to dummy data |
+| `npm run db:push` | Apply Prisma schema changes without resetting data |
 | `npm run db:seed` | Reset to dummy data only |
 | `npm run backup` | Export the configured MySQL database to `backups/*.sql` |
 | `npm test` | Run unit tests (validation, dates, colours) |
@@ -77,9 +78,19 @@ docs/                  documentation, testing notes, AI disclosure
 
 ## Troubleshooting
 - *“AUTH_SECRET is missing”* → you skipped `cp .env.example .env`; restart after copying.
+- *“The table `payment` does not exist”* → run `npm run db:push`, then restart the dev server.
 - *Reset everything* → run `npm run setup` (this deletes and reseeds all dummy data).
 - Port busy → `npm run dev -- -p 3001`.
 
 Do not submit `.env`, database dumps, backup files, real credentials, or
 real customer records. The included credentials and seed records are dummy
 assessment values only.
+
+## v3 additions
+- **Calendar** (`/calendar`): month view of project and task deadlines, "only my work" filter, accessible agenda list.
+- **Payment ledger** (project page): record each payment (date, amount, method, reference), balance and status, CSV export (`/export/payments`). `Project.paidAmount` is kept in step automatically.
+- **Customer report** (`/customers/<id>/report`): printable summary with projects, budget and money received.
+- **Permissions enforced on the server**: read-only `VIEWER` users can no longer change data by calling an action directly; creating/archiving projects and removing payments need Manager or Admin.
+- **UI refinement** (`src/app/pro.css`): flatter surfaces, tabular numbers, grouped sidebar with a gold rail on the active page.
+
+After pulling these changes run `npm run setup` once (adds the `Payment` table and reseeds dummy data).

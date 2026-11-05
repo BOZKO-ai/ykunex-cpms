@@ -92,7 +92,6 @@ export function ProjectForm({
       <Field name="deadline" label="Deadline" type="date" required defaultValue={toInputDate(project?.deadline)} />
       <Field name="progress" label="Progress (%)" type="number" min={0} max={100} step={1} required defaultValue={project?.progress ?? 0} />
       <Field name="budget" label="Budget (LKR)" type="number" min={0} step="any" defaultValue={project?.budget} hint="Optional" />
-      <Field name="paidAmount" label="Paid amount (LKR)" type="number" min={0} step="any" defaultValue={project?.paidAmount ?? 0} hint="Cannot exceed the budget" />
       <Field name="description" label="Description" as="textarea" rows={4} defaultValue={project?.description} wide />
       <div className="form-actions wide">
         <SubmitButton>Save project</SubmitButton>

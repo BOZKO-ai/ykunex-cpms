@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./pro.css";
 import { getSettings } from "@/lib/settings";
 import { readableText } from "@/lib/color";
 import { ToastProvider } from "@/components/toast";

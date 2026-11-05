@@ -14,6 +14,7 @@ async function main() {
   await db.activity.deleteMany();
   await db.task.deleteMany();
   await db.projectUpdate.deleteMany();
+  await db.payment.deleteMany();
   await db.project.deleteMany();
   await db.customer.deleteMany();
   await db.listItem.deleteMany();
@@ -116,6 +117,16 @@ async function main() {
         assignedToId: staff[i % staff.length].id,
       },
     });
+
+    // Payment ledger: finished projects are fully paid, healthy in-progress projects are part paid.
+    const share = st === "Completed" ? 1 : st === "In Progress" && progress >= 50 ? 0.5 : 0;
+    if (budget && share > 0) {
+      const total = Math.round(budget * share);
+      const first = Math.round(total / 2);
+      await db.payment.create({ data: { projectId: p.id, amount: first, paidOn: day(Math.min(0, startOff + 3)), method: "BANK_TRANSFER", reference: `ADV-${p.id}`, note: "Advance payment" } });
+      await db.payment.create({ data: { projectId: p.id, amount: total - first, paidOn: day(Math.min(-1, startOff + 30)), method: "CHEQUE", reference: `INV-${p.id}`, note: "Milestone payment" } });
+      await db.project.update({ where: { id: p.id }, data: { paidAmount: total } });
+    }
 
     if (st !== "Proposed") {
       const count = 2 + (i % 2);

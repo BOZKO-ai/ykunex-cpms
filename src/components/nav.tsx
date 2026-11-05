@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Fragment } from "react";
 
 const items = [
   { 
@@ -41,6 +42,16 @@ const items = [
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 3h7v18H3z"/><path d="M14 3h7v10h-7z"/><path d="M14 17h7v4h-7z"/>
+      </svg>
+    )
+  },
+  {
+    href: "/calendar",
+    label: "Calendar",
+    admin: false,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
       </svg>
     )
   },
@@ -88,6 +99,14 @@ const items = [
 
 import { motion } from "framer-motion";
 
+const GROUP: Record<string, string> = {
+  "/": "Workspace", "/customers": "Workspace", "/projects": "Workspace", "/projects/board": "Workspace", "/calendar": "Workspace",
+  "/account": "Account",
+  "/users": "Administration", "/settings": "Administration", "/activity": "Administration",
+};
+const GROUP_ORDER = ["Workspace", "Account", "Administration"];
+const groupOf = (href: string) => GROUP[href] ?? "Workspace";
+
 export function Nav({ 
   isAdmin, 
   onItemClick,
@@ -103,7 +122,9 @@ export function Nav({
       <ul>
         {items
           .filter((i) => !i.admin || isAdmin)
-          .map((i) => {
+          .sort((a, b) => GROUP_ORDER.indexOf(groupOf(a.href)) - GROUP_ORDER.indexOf(groupOf(b.href)))
+          .map((i, idx, arr) => {
+            const heading = idx === 0 || groupOf(arr[idx - 1].href) !== groupOf(i.href) ? groupOf(i.href) : null;
             // Precise active matching: prevent /projects and /projects/board collision
             const active = 
               i.href === "/"
@@ -113,7 +134,9 @@ export function Nav({
                   : path === i.href || path.startsWith(i.href + "/");
 
             return (
-              <li key={i.href} style={{ position: "relative" }}>
+              <Fragment key={i.href}>
+              {heading && <li className="nav-group" aria-hidden="true">{heading}</li>}
+              <li style={{ position: "relative" }}>
                 <Link 
                   href={i.href} 
                   aria-current={active ? "page" : undefined} 
@@ -144,6 +167,7 @@ export function Nav({
                   />
                 )}
               </li>
+              </Fragment>
             );
           })}
       </ul>

@@ -72,12 +72,6 @@ export const projectSchema = z
       .default("")
       .transform((v) => (v === "" ? null : Math.round(Number(v) * 100) / 100))
       .pipe(z.number({ invalid_type_error: "Budget must be a number" }).min(0, "Budget cannot be negative").nullable()),
-    paidAmount: z
-      .string()
-      .trim()
-      .default("0")
-      .transform((v) => (v === "" ? 0 : Math.round(Number(v) * 100) / 100))
-      .pipe(z.number({ invalid_type_error: "Paid amount must be a number" }).min(0, "Paid amount cannot be negative")),
   })
   .refine(
     (d) => {
@@ -86,11 +80,7 @@ export const projectSchema = z
       return !s || !e || e >= s;
     },
     { path: ["deadline"], message: "Deadline must be on or after the start date" },
-  )
-  .refine((d) => d.budget === null || d.paidAmount <= d.budget, {
-    path: ["paidAmount"],
-    message: "Paid amount cannot exceed the project budget",
-  });
+  );
 
 export const updateSchema = z.object({
   note: required("Update note", 2000),
@@ -185,3 +175,31 @@ export const passwordChangeSchema = z
     path: ["confirmPassword"],
     message: "Passwords do not match",
   });
+
+export const PAYMENT_METHODS = {
+  BANK_TRANSFER: "Bank transfer",
+  CASH: "Cash",
+  CHEQUE: "Cheque",
+  CARD: "Card",
+  OTHER: "Other",
+} as const;
+
+export const paymentSchema = z.object({
+  amount: z
+    .string()
+    .trim()
+    .min(1, "Amount is required")
+    .transform((v) => Math.round(Number(v) * 100) / 100)
+    .pipe(
+      z
+        .number({ invalid_type_error: "Amount must be a number" })
+        .positive("Amount must be greater than zero")
+        .max(1_000_000_000, "Amount is too large"),
+    ),
+  paidOn: dateField("Payment date"),
+  method: z.enum(["BANK_TRANSFER", "CASH", "CHEQUE", "CARD", "OTHER"], {
+    errorMap: () => ({ message: "Choose a payment method" }),
+  }),
+  reference: optional(80),
+  note: optional(300),
+});

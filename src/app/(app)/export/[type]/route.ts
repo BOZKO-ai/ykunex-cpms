@@ -34,6 +34,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ type: s
       ["ID", "Project", "Customer", "Service area", "Status", "Start date", "Deadline", "Progress %", "Budget (LKR)", "Assigned to", "Archived", "Description"],
       ...data.map((p) => [p.id, p.name, p.customer.name, p.serviceArea.label, p.status.label, toInputDate(p.startDate), toInputDate(p.deadline), p.progress, p.budget, p.paidAmount, p.budget === null ? "" : Math.max(0, p.budget - p.paidAmount), p.assignedTo?.name ?? "", p.archived ? "Yes" : "No", p.description]),
     ];
+  } else if (type === "payments") {
+    const data = await db.payment.findMany({ orderBy: { paidOn: "desc" }, include: { project: { include: { customer: true } } } });
+    rows = [
+      ["ID", "Date", "Project", "Customer", "Amount (LKR)", "Method", "Reference", "Note"],
+      ...data.map((p) => [p.id, toInputDate(p.paidOn), p.project.name, p.project.customer.name, p.amount, p.method, p.reference, p.note]),
+    ];
   } else {
     return new Response("Unknown export type.", { status: 404 });
   }

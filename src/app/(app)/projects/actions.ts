@@ -3,16 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireEditor, requireManager } from "@/lib/auth";
 import { parseDate } from "@/lib/dates";
 import { FIX_MESSAGE, toValues, validate, type FormState } from "@/lib/forms";
-import { projectSchema, taskSchema, updateSchema } from "@/lib/validation";
+import { paymentSchema, projectSchema, taskSchema, updateSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 import { notify } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
 
 export async function saveProject(id: number | null, _: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser();
+  const user = id ? await requireEditor() : await requireManager();
   const v = validate(projectSchema, fd);
   if (!("data" in v)) return v.state;
   const d = v.data;
@@ -42,7 +42,6 @@ export async function saveProject(id: number | null, _: FormState, fd: FormData)
     deadline: parseDate(d.deadline)!,
     progress: d.progress,
     budget: d.budget,
-    paidAmount: d.paidAmount,
     assignedToId: d.assignedToId,
   };
 
@@ -56,7 +55,6 @@ export async function saveProject(id: number | null, _: FormState, fd: FormData)
     }
     if (prev.progress !== d.progress) changes.push(`Progress: ${prev.progress}% → ${d.progress}%`);
     if (prev.budget !== d.budget) changes.push(`Budget: ${prev.budget} → ${d.budget}`);
-    if (prev.paidAmount !== d.paidAmount) changes.push(`Paid amount: ${prev.paidAmount} → ${d.paidAmount}`);
   }
 
   const saved = await db.$transaction(async (tx) => {
@@ -117,7 +115,7 @@ export async function saveProject(id: number | null, _: FormState, fd: FormData)
 }
 
 export async function setProjectArchived(id: number, archived: boolean): Promise<void> {
-  const user = await requireUser();
+  const user = await requireManager();
   const p = await db.project.update({ where: { id }, data: { archived } });
   await logActivity(user.uid, archived ? "archive" : "restore", "project", id, `${archived ? "Archived" : "Restored"} project "${p.name}"`);
   revalidatePath("/projects");
@@ -126,7 +124,7 @@ export async function setProjectArchived(id: number, archived: boolean): Promise
 }
 
 export async function addUpdate(projectId: number, _: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requireEditor();
   const v = validate(updateSchema, fd);
   if (!("data" in v)) return v.state;
 
@@ -179,7 +177,7 @@ export async function addUpdate(projectId: number, _: FormState, fd: FormData): 
 }
 
 export async function addTask(projectId: number, _: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requireEditor();
   const v = validate(taskSchema, fd);
   if (!("data" in v)) return v.state;
 
@@ -243,7 +241,7 @@ export async function addTask(projectId: number, _: FormState, fd: FormData): Pr
 }
 
 async function toggleTask(taskId: number): Promise<void> {
-  await requireUser();
+  await requireEditor();
   const t = await db.task.findUnique({ where: { id: taskId } });
   if (!t) return;
   await db.task.update({ where: { id: taskId }, data: { done: !t.done } });
@@ -259,7 +257,7 @@ export async function toggleTaskFromForm(fd: FormData): Promise<void> {
 }
 
 export async function updateProjectStatus(id: number, statusId: number): Promise<void> {
-  const user = await requireUser();
+  const user = await requireEditor();
   const [project, status] = await Promise.all([
     db.project.findUnique({ where: { id } }),
     db.listItem.findFirst({ where: { id: statusId, list: "PROJECT_STATUS" } }),
@@ -287,7 +285,7 @@ export async function updateProjectStatus(id: number, statusId: number): Promise
 }
 
 export async function deleteTask(projectId: number, taskId: number, _fd: FormData): Promise<void> {
-  const user = await requireUser();
+  const user = await requireEditor();
   try {
     await db.$transaction(async (tx) => {
       await tx.task.delete({ where: { id: taskId } });
@@ -311,7 +309,7 @@ export async function deleteTask(projectId: number, taskId: number, _fd: FormDat
 import { saveFile, deleteFile } from "@/lib/storage";
 
 export async function addDocument(projectId: number, _: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requireEditor();
   const name = fd.get("name") as string;
   const type = fd.get("type") as string;
   const size = Number(fd.get("size"));
@@ -345,7 +343,7 @@ export async function addDocument(projectId: number, _: FormState, fd: FormData)
 }
 
 export async function deleteDocument(projectId: number, documentId: number): Promise<void> {
-  const user = await requireUser();
+  const user = await requireEditor();
   try {
     await db.$transaction(async (tx) => {
       const doc = await (tx.projectDocument as any).delete({ where: { id: documentId } });
@@ -364,4 +362,53 @@ export async function deleteDocument(projectId: number, documentId: number): Pro
   } catch (e) {
     logger.error("Failed to delete document", e, { userId: user.uid, documentId });
   }
+}
+
+export async function addPayment(projectId: number, _: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireEditor();
+  const v = validate(paymentSchema, fd);
+  if (!("data" in v)) return v.state;
+  const project = await db.project.findUnique({ where: { id: projectId } });
+  if (!project) return { message: "This project no longer exists." };
+
+  // Never let the ledger go over the agreed budget.
+  if (project.budget !== null && project.paidAmount + v.data.amount > project.budget + 0.005) {
+    const left = Math.max(0, project.budget - project.paidAmount);
+    return {
+      errors: { amount: `This is more than the balance. Remaining: LKR ${left.toLocaleString("en-US")}` },
+      values: toValues(fd),
+      message: FIX_MESSAGE,
+    };
+  }
+
+  await db.$transaction([
+    db.payment.create({
+      data: {
+        projectId,
+        amount: v.data.amount,
+        paidOn: parseDate(v.data.paidOn)!,
+        method: v.data.method,
+        reference: v.data.reference,
+        note: v.data.note,
+      },
+    }),
+    db.project.update({ where: { id: projectId }, data: { paidAmount: { increment: v.data.amount } } }),
+  ]);
+  await logActivity(user.uid, "create", "payment", projectId, `Recorded payment LKR ${v.data.amount.toLocaleString("en-US")} on "${project.name}"`);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/");
+  return { ok: true, message: "Payment recorded." };
+}
+
+export async function deletePayment(projectId: number, paymentId: number): Promise<void> {
+  const user = await requireManager();
+  const pay = await db.payment.findUnique({ where: { id: paymentId } });
+  if (!pay || pay.projectId !== projectId) return;
+  await db.$transaction([
+    db.payment.delete({ where: { id: paymentId } }),
+    db.project.update({ where: { id: projectId }, data: { paidAmount: { decrement: pay.amount } } }),
+  ]);
+  await logActivity(user.uid, "delete", "payment", projectId, `Removed payment LKR ${pay.amount.toLocaleString("en-US")} from project #${projectId}`);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/");
 }

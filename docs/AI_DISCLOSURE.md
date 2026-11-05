@@ -27,3 +27,6 @@ tsx are free/open-source dependencies listed in `package.json`.
 - No candidate collaboration or copied candidate implementation was used.
 - No secrets, real customer records, paid assets, or unauthorized services are
   included in the submission.
+
+## v3 changes
+Claude (Anthropic) was also used to add the calendar, payment ledger, customer report, server-side role checks and the `pro.css` refinement. Candidate to complete: confirm that you reviewed and tested these changes yourself.

@@ -4,13 +4,11 @@ import { useState } from "react";
 import { Upload, X, File, Loader2 } from "lucide-react";
 
 export function FileUpload({ 
-  onFileSelect, 
   maxSizeMB = 5 
 }: { 
-  onFileSelect: (file: { name: string; type: string; size: number; data: string } | null) => void;
   maxSizeMB?: number;
 }) {
-  const [file, setFile] = useState<{ name: string; size: number } | null>(null);
+  const [file, setFile] = useState<{ name: string; type: string; size: number; data: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,8 +27,7 @@ export function FileUpload({
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
-      setFile({ name: selectedFile.name, size: selectedFile.size });
-      onFileSelect({
+      setFile({
         name: selectedFile.name,
         type: selectedFile.type,
         size: selectedFile.size,
@@ -47,12 +44,15 @@ export function FileUpload({
 
   const clearFile = () => {
     setFile(null);
-    onFileSelect(null);
     setError(null);
   };
 
   return (
     <div className="file-upload-wrap">
+      <input type="hidden" name="name" value={file?.name ?? ""} readOnly />
+      <input type="hidden" name="type" value={file?.type ?? ""} readOnly />
+      <input type="hidden" name="size" value={file?.size ?? ""} readOnly />
+      <input type="hidden" name="data" value={file?.data ?? ""} readOnly />
       {!file ? (
         <div className="upload-zone">
           <input 

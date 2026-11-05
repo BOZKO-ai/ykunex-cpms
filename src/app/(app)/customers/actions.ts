@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireEditor } from "@/lib/auth";
 import { FIX_MESSAGE, toValues, validate, type FormState } from "@/lib/forms";
 import { customerSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 import { logger } from "@/lib/logger";
 
 export async function saveCustomer(id: number | null, _: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requireEditor();
   const v = validate(customerSchema, fd);
   if (!("data" in v)) return v.state;
 
@@ -48,7 +48,7 @@ export async function saveCustomer(id: number | null, _: FormState, fd: FormData
 }
 
 export async function setCustomerArchived(id: number, archived: boolean): Promise<void> {
-  const user = await requireUser();
+  const user = await requireEditor();
   try {
     await db.$transaction(async (tx) => {
       const c = await tx.customer.update({ where: { id }, data: { archived } });

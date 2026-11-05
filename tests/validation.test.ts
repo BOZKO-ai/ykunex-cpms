@@ -1,3 +1,4 @@
+import { paymentSchema } from "../src/lib/validation";
 import { describe, expect, it } from "vitest";
 import { customerSchema, passwordChangeSchema, projectSchema, updateSchema, userCreateSchema } from "../src/lib/validation";
 import { parseDate } from "../src/lib/dates";
@@ -79,4 +80,22 @@ describe("passwordChangeSchema", () => {
     expect(r.success).toBe(false);
   });
   it("rejects a weak new password", () => expect(passwordChangeSchema.safeParse({ ...base, newPassword: "short", confirmPassword: "short" }).success).toBe(false));
+});
+
+describe("paymentSchema", () => {
+  const ok = { amount: "25000", paidOn: "2026-11-05", method: "CASH", reference: "", note: "" };
+  it("accepts a valid payment", () => expect(paymentSchema.safeParse(ok).success).toBe(true));
+  it("rejects zero, negative and non-numeric amounts", () => {
+    expect(paymentSchema.safeParse({ ...ok, amount: "0" }).success).toBe(false);
+    expect(paymentSchema.safeParse({ ...ok, amount: "-10" }).success).toBe(false);
+    expect(paymentSchema.safeParse({ ...ok, amount: "abc" }).success).toBe(false);
+  });
+  it("rejects an invalid date and an unknown method", () => {
+    expect(paymentSchema.safeParse({ ...ok, paidOn: "2026-02-31" }).success).toBe(false);
+    expect(paymentSchema.safeParse({ ...ok, method: "BITCOIN" }).success).toBe(false);
+  });
+  it("rounds to two decimals", () => {
+    const r = paymentSchema.safeParse({ ...ok, amount: "10.456" });
+    expect(r.success && r.data.amount).toBe(10.46);
+  });
 });

@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "setup": "prisma db push && tsx prisma/seed.ts",
+    "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "backup": "node scripts/backup.mjs",
     "test": "vitest run",

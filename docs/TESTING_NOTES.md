@@ -43,3 +43,19 @@ deadline ordering, progress and budget limits, and readable text colour.
   is incomplete; after `npm run build`, typecheck passes.
 - The live audit added two clearly named dummy records; they contain no real
   customer data.
+
+## v3 manual checks (fill in Result yourself)
+| # | Area | Steps | Expected | Result | Notes |
+|---|---|---|---|---|---|
+| 27 | Payments | Record 10,000 on a project with a budget | Received and balance update; row appears in history | | |
+| 28 | Payments | Record more than the remaining balance | Friendly error on the amount field; nothing saved | | |
+| 29 | Payments | Amount 0, -5, "abc", invalid date | Each rejected with a message | | |
+| 30 | Payments | Remove a payment (Manager/Admin) after confirming | Received total goes down by the same amount | | |
+| 31 | Payments | Staff user opens a project | Can record but cannot remove | | |
+| 32 | Roles | Viewer opens a project | No forms or buttons that change data | | |
+| 33 | Roles | Viewer tries a saved form POST / old tab | Redirected with "Only admins/managers" style message, data unchanged | | |
+| 34 | Calendar | Open /calendar, next/prev month, Today | Correct month; today highlighted | | |
+| 35 | Calendar | "Show only my work" | Only my projects and tasks | | |
+| 36 | Calendar | Day with 4+ items | "+N more" jumps to the agenda | | |
+| 37 | Report | Customer → Report → Print | One clean page, totals match the customer page | | |
+| 38 | CSV | Download payments CSV | Opens in Excel with correct rows | | |

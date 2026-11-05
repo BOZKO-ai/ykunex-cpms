@@ -98,3 +98,10 @@ export function canEdit(user: Session): boolean {
 export function isManager(user: Session): boolean {
   return user.role === "ADMIN" || user.role === "MANAGER";
 }
+
+/** Blocks the read-only VIEWER role. Every server action that changes data must call this (or requireManager). */
+export async function requireEditor(): Promise<Session> {
+  const u = await requireUser();
+  if (u.role === "VIEWER") redirect("/?denied=1");
+  return u;
+}
