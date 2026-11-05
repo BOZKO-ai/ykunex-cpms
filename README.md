@@ -35,7 +35,7 @@ Production-style run: `npm run build && npm start`.
 | Role  | Email                    | Password     |
 |-------|--------------------------|--------------|
 | Admin | admin@yakunex.example    | Admin@12345  |
-| Staff | kasun@yakunex.example    | Staff@12345  |
+| Staff | udara7355@gmail.com    | 1234@Samare |
 
 Admins can open **Settings**; staff cannot.
 
